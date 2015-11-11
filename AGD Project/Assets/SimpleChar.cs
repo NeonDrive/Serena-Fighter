@@ -3,53 +3,109 @@ using System.Collections;
 
 public class SimpleChar : MonoBehaviour {
 
-	public int dmgpct = 0;
 	private Vector3 spawnPos;
 	private bool alive = true;
+	private Vector3 turnVector;
+	private float stickDeadzone = 0.02f;
+	private float turnAxisThreshold = 0.0f;
+	private Vector2 stickInput_r;
+	private Vector3 moveDirection = Vector3.zero;
 
-	// Use this for initialization
+	public float turnSpeed = 5.0f;
+	public int playerNo = 0;
+	public int dmgpct = 0;
+
+	//Sets the Character's Spawn Position to be available later for respawn.
 	void Start () 
 	{
+		if (this.gameObject.name == "Player1") {
+			playerNo = 1;
+		}
+		else if (this.gameObject.name == "Player2")
+		{
+			playerNo = 2;
+		} 
+		else if (this.gameObject.name =="Player3")
+		{
+			playerNo = 3;
+		} 
+		else if (this.transform.name == "Player4") 
+		{
+			playerNo = 4;
+		} 
+		else
+		{
+			Debug.Log("No Correct Player Name Found");
+		}
 		spawnPos = transform.position;
 	}
 	
-	// Update is called once per frame
+	// Calls the various functions neccessary for the character to function. Might be considering multi threading with Coroutines if
+	// this ends up being too intensive per frame if done sequentially rather than parallel.
 	void Update () {
-		if (alive = true) 
+		if (alive == true) 
 		{
-			CharMovement();
+			StartCoroutine(CharMovement());
+			CharTurn();
 			CharAttack();
 		}
 	}
 
-	void CharMovement()
+	IEnumerator CharMovement()
 	{
-		var dt = Time.deltaTime;
-		var position = transform.position;
-		var velocity = rigidbody.velocity;
+		CharacterController controller = GetComponent<CharacterController>();
 
-		velocity.z += 3.5f * Input.GetAxis("Vertical");
-		velocity.x += 3.5f * Input.GetAxis ("Horizontal");
+		if (playerNo == 1) {
+			moveDirection = new Vector3 (-Input.GetAxis ("Horizontal"), 0, -Input.GetAxis ("Vertical"));
+			Debug.Log ("Hello");
+		}
+		else if (playerNo == 2)
+			moveDirection = new Vector3 (-Input.GetAxis ("Horizontal"), 0, -Input.GetAxis ("Vertical"));
+		else if (playerNo == 3)
+			moveDirection = new Vector3 (-Input.GetAxis ("Horizontal"), 0, -Input.GetAxis ("Vertical"));
+		else if (playerNo == 4)
+			moveDirection = new Vector3 (-Input.GetAxis ("Horizontal"), 0, -Input.GetAxis ("Vertical"));
 
-		if (velocity.x > 4) {
-			velocity.x = 4;
-		}
-		if (velocity.x < -4) {
-			velocity.x = -4;
-		}
-		if (velocity.z > 4) {
-			velocity.z = 4;
-		}
-		if (velocity.z < -4) {
-			velocity.z = -4;
-		}
+		moveDirection = transform.TransformDirection (moveDirection);
 
-		position.x += velocity.x * dt;
-		position.y = 0.5f;
-		position.z += velocity.z * dt;
+		moveDirection *= 5.0f;
 
-		transform.position = position;
-		rigidbody.velocity = velocity;
+		controller.Move (moveDirection * Time.deltaTime);
+
+		yield return null;
+
+	}
+
+	void CharTurn()
+	{
+		stickInput_r = new Vector2 (Input.GetAxis ("Joy1Horizontal2"), Input.GetAxis ("Joy1Vertical2"));
+		if (stickInput_r.magnitude < stickDeadzone) 
+		{
+			stickInput_r = Vector2.zero;
+		}
+		else 
+		{
+			stickInput_r = stickInput_r.normalized * ((stickInput_r.magnitude - stickDeadzone) / (1 - stickDeadzone));
+		}
+		
+		if(stickInput_r.magnitude >= turnAxisThreshold)
+		{
+			turnVector.y = Mathf.Atan2(-stickInput_r.x, -stickInput_r.y) * Mathf.Rad2Deg;
+			StartCoroutine(Turn());
+		}
+	}
+
+	IEnumerator Turn()
+	{
+		Quaternion oldRotation = transform.rotation;
+		Quaternion newRotation = new Quaternion ();
+		newRotation.eulerAngles = turnVector;
+
+		for (float t = 0.0f; t < 1.0f; t+= (turnSpeed * Time.deltaTime)) 
+		{
+			transform.rotation = Quaternion.Lerp(oldRotation, newRotation, t);
+			yield return null;
+		}
 	}
 
 	void CharAttack()
